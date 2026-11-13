@@ -18,7 +18,7 @@ Bare-Metal LED Blinking Using AT89S52 Microcontroller
 TASK2B — Configure GPIO Port 1 via direct register access to blink an LED at ~1 Hz using a software delay without external libraries.
 
 ### Circuit Diagram
-![Circuit Diagram](circuit.png)
+![Circuit Diagram](../circuit.png)
 
 Both the onboard P1.0 LED and external LED (P1.0 → 1 kΩ resistor → LED → GND) blinked together during the experiment.
 
