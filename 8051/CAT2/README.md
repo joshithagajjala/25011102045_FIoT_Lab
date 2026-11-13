@@ -1,14 +1,5 @@
-﻿# Continuous Lab Evaluation-2: Bare-Metal LED Blink
+﻿# Continuous Assessment Test 2 (CAT2)
 
-## Description
-Bare-metal Embedded C program for Atmel AT89S52 microcontroller controlling LEDs via direct memory-mapped GPIO register access on Port 1 (P1). Uses a software delay loop to blink LEDs at approximately 1 Hz without external libraries.
-
-## Hardware Target
-- **Microcontroller**: Atmel AT89S52 (8051 Architecture)
-- **Clock Frequency**: 11.0592 MHz / 12 MHz Crystal
-
-## Deliverables
-- **Embedded C Source**: `led_test.c`
-- **Startup Code**: `STARTUP.A51`
-- **Keil Project**: `*.uvproj` / `*.uvopt`
-- **Compiled Firmware**: `Objects/led_test.hex`
+- **Date:** 20/07/2026 (Week 2)
+- **Experiment:** Bare-Metal LED Blinking Using AT89S52 Microcontroller
+- **Task Documentation:** [TASK2B Documentation](TASK2B/README.md)
