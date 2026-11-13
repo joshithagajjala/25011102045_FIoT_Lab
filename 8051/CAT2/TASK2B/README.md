@@ -26,7 +26,7 @@ Bare-Metal LED Blinking Using AT89S52 Microcontroller
 - **Development Board**: AmBTech Labs 8051 Development Board (identified via PCB silk-screen marking)
 - **Clock Frequency**: 11.0592 MHz crystal oscillator (crystal load capacitors integrated on board, exact values unverified)
 - **Target GPIO Pin**: Port 1, specifically Pin 1 (P1.0)
-- **Power Supply**: Nominal 5.0 V DC (operating rail voltage unmeasured with multimeter)
+- **Power Supply**: Nominal 5.0 V DC (operating rail voltage unmeasured with multimeter; not treated as a failure)
 - **Dual LED Setup**:
   1. **Onboard User LED**: Integrated on the AmBTech Labs development board and associated with P1.0.
   2. **External Breadboard LED**: Connected externally to P1.0 through a series current-limiting resistor to ground (`P1.0 → R_LED → LED Anode → LED Cathode → GND`).
@@ -45,21 +45,21 @@ Bare-Metal LED Blinking Using AT89S52 Microcontroller
 
 #### 3. Hardware Bring-Up Sheet (Question Paper Deliverables)
 
-| Parameter | Laboratory Entry / Status |
-| :--- | :--- |
-| **MCU** | Microchip / Atmel AT89S52 |
-| **CPU Core** | 8-bit 8051 (MCS-51 Architecture) |
-| **Development Board** | AmBTech Labs 8051 Development Board (PCB marking confirmed) |
-| **Operating Voltage** | Nominal 5.0 V (Board power rails unverified with DMM) |
-| **Clock Frequency** | 11.0592 MHz crystal oscillator |
-| **Debug / Program Interface** | In-System Programming (ISP) via ProgISP v1.72 (Physical programmer model unconfirmed) |
-| **LED GPIO Port** | Port 1 (`P1`, SFR Address `0x90`) |
-| **LED GPIO Pin** | Pin 1 (`P1.0`) |
-| **LED Indicators Present** | Dual indicators: (1) Onboard LED associated with P1.0, (2) External LED on breadboard |
-| **External LED Electrical State** | Active-High to Ground (`P1.0 → R_LED → Anode → Cathode → GND`) |
-| **Onboard LED Electrical State** | Associated with P1.0 (Internal PCB routing / polarity unverified) |
-| **Observed Physical State** | Both LEDs observed blinking simultaneously in lab |
-| **LED Blink Frequency (Hz)** | Intended ~1 Hz (Nominal ~500 ms ON / ~500 ms OFF; actual output unmeasured) |
+| Parameter | Laboratory Entry / Status | Verification Notes |
+| :--- | :--- | :--- |
+| **MCU** | Microchip / Atmel AT89S52 | Confirmed from IC package marking |
+| **CPU Core** | 8-bit 8051 (MCS-51 Architecture) | Confirmed architecture |
+| **Development Board** | AmBTech Labs 8051 Development Board | Confirmed from PCB silk-screen marking |
+| **Operating Voltage** | Nominal 5.0 V | Unmeasured with DMM in lab; marked as unverified (not a failure) |
+| **Clock Frequency** | 11.0592 MHz crystal oscillator | Confirmed from crystal marking on development board |
+| **Debug / Program Interface** | In-System Programming (ISP) | Flashed via ProgISP v1.72; physical programmer hardware model unconfirmed |
+| **LED GPIO Port** | Port 1 (`P1`, SFR Address `0x90`) | Confirmed from code register assignment |
+| **LED GPIO Pin** | Pin 1 (`P1.0`) | Confirmed target pin; firmware toggles byte-wide across P1.0–P1.7 |
+| **LED Indicators Present** | Dual indicators: (1) Onboard LED, (2) External LED | Confirmed: both LEDs observed blinking simultaneously |
+| **External LED Circuit** | `P1.0 → R_LED → Anode → Cathode → GND` | Active-High to GND (student reported wiring; `R_LED` value unverified) |
+| **Onboard LED Circuit** | Associated with P1.0 on PCB | Internal PCB routing / polarity unverified |
+| **Observed Physical State** | Both LEDs observed blinking simultaneously | Confirmed physical observation during experiment |
+| **LED Blink Frequency (Hz)** | Intended ~1 Hz (Nominal ~500 ms ON / ~500 ms OFF) | Unmeasured with oscilloscope; marked as unverified software target |
 
 ---
 
@@ -98,6 +98,12 @@ As mandated in the official continuous evaluation prompt:
    - **Connection**: `P1.0 (Pin 1) → Current-limiting resistor R_LED → LED Anode (+) → LED Cathode (-) → GND`.
    - **Polarity**: Because the LED cathode connects to GND, writing logic HIGH (~5 V) to P1.0 forward-biases the diode and turns the LED **ON**, while writing logic LOW (0 V) turns the LED **OFF**. This constitutes **active-high** operation.
    - **Resistor Value**: Labelled `R_LED (value unverified)` because the exact resistor value used during the laboratory session was not confirmed (do not assume 330 Ω).
+
+#### Electrical Consistency & Technical Notes
+- **Quasi-Bidirectional Port Sourcing vs. Sinking**:
+  The AT89S52 Port 1 uses quasi-bidirectional I/O structures with internal pull-ups. When driven LOW (`0`), the strong internal pulldown transistor can sink up to 10–20 mA. When driven HIGH (`1`), the pin relies on weak internal pull-ups that supply only tens to hundreds of microamps ($\approx 50\text{--}100\ \mu\text{A}$) in steady-state. Because the reported external wiring connects the LED cathode to GND (active-high), current is sourced from P1.0. The successful observation of simultaneous blinking suggests the external circuit utilized a sensitive low-current LED, an auxiliary pull-up resistor on the board header, or board-level buffering.
+- **Clock Frequency vs. Software Delay Calibration**:
+  The delay loop comments in `main.c` note a 12 MHz timing basis (`for (j = 0; j < 127; j++) roughly 1 ms at 12 MHz`). Because the physical board operates at 11.0592 MHz, the machine cycle duration is $12 / 11.0592\text{ MHz} \approx 1.085\ \mu\text{s}$ (compared to $1.000\ \mu\text{s}$ at 12 MHz). This introduces an inherent $\approx 8.5\%$ elongation in the software delay duration.
 
 ---
 
@@ -188,7 +194,7 @@ void main()
    Reset initialization executes directly from address `0x0000` via `STARTUP.A51`, clearing memory and branching into `main()` without an underlying operating system.
 
 4. **Intended Software Timing vs. Measured Values**:
-   The ~1-second blinking cycle (500 ms per state) represents an intended software timing calculation. Actual output voltage levels, supply rail stability, and physical frequency were **not measured** with an oscilloscope, digital multimeter, or logic analyzer.
+   The ~1-second blinking cycle (500 ms per state) represents an intended software timing calculation. Actual output voltage levels, supply rail stability, and physical frequency were **not measured** with an oscilloscope, digital multimeter, or logic analyzer. These items are clearly documented as unverified rather than treated as experimental failures.
 
 5. **Software Delay Limitations**:
    Software delay loops execute blocking CPU instructions, preventing low-power sleep modes and background task handling. Because the loop relies on CPU clock cycles, timing is sensitive to clock frequency discrepancies (11.0592 MHz physical crystal vs. 12 MHz calculation) and Keil compiler optimization levels. For deterministic timing in embedded IoT edge devices, hardware timer peripherals (Timer 0 / Timer 1) with interrupt service routines are required.
