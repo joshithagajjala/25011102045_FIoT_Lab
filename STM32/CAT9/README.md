@@ -1,16 +1,16 @@
 ﻿# Continuous Lab Evaluation 9: STM32 UART Command-Controlled LED
 
 ## 1. Overview
-Continuous Lab Evaluation 9 establishes asynchronous serial communication between the STM32F103C8T6 microcontroller and a host computer serial console using the hardware USART1 peripheral at 115200 baud. The firmware reads incoming ASCII keystrokes, provides visual terminal feedback via character echoing, and translates specific single-character commands into deterministic physical actuation of an external LED on pin PA1.
+Continuous Lab Evaluation 9 establishes asynchronous serial communication between the STM32F103C8T6 microcontroller and a host computer serial console using the hardware USART1 peripheral at 115200 baud. The firmware reads incoming ASCII keystrokes, provides visual terminal feedback via character echoing, and translates strictly lowercase single-character commands (`'w'`, `'e'`, `'r'`) into physical actuation of an external LED on pin PA1 accompanied by terminal status confirmations.
 
 ## 2. Objective
 - Configure STM32 USART1 in full-duplex asynchronous mode (115200 baud, 8 data bits, no parity, 1 stop bit).
 - Wire a USB-to-UART bridge adapter between the PC and the STM32 Blue Pill development board with a shared common ground.
 - Implement full-duplex character echoing to provide immediate operator feedback in PC terminal software.
-- Parse ASCII command characters:
-  - `'w'` or `'W'`: Turn external LED ON (PA1 = HIGH).
-  - `'e'` or `'E'`: Turn external LED OFF (PA1 = LOW).
-  - `'r'` or `'R'`: Toggle external LED state (PA1 invert).
+- Parse strictly lowercase ASCII command characters:
+  - `'w'`: Turn external LED ON (PA1 = HIGH) and transmit confirmation message.
+  - `'e'`: Turn external LED OFF (PA1 = LOW) and transmit confirmation message.
+  - `'r'`: Toggle external LED state (PA1 invert) and transmit confirmation message.
 
 ## 3. Hardware and Software Used
 - **Target MCU**: STM32F103C8T6 (ARM Cortex-M3 @ 72 MHz)
@@ -31,11 +31,11 @@ Continuous Lab Evaluation 9 establishes asynchronous serial communication betwee
 ## 5. Summary of Actual Implementation
 The application repeatedly polls USART1 using `HAL_UART_Receive()` with `HAL_MAX_DELAY`. When a byte arrives from the terminal emulator:
 1. It is re-transmitted back to the host via `HAL_UART_Transmit()` to produce terminal character echo.
-2. The character is compared against command letters:
-   - `'w'` / `'W'` drives PA1 to `GPIO_PIN_SET`.
-   - `'e'` / `'E'` drives PA1 to `GPIO_PIN_RESET`.
-   - `'r'` / `'R'` inverts PA1 using `HAL_GPIO_TogglePin()`.
-3. Non-command characters are echoed harmlessly without changing the LED state.
+2. The character is compared against strictly lowercase command letters:
+   - `'w'` drives PA1 to `GPIO_PIN_SET` and prints `\r\nLED turned ON\r\n`.
+   - `'e'` drives PA1 to `GPIO_PIN_RESET` and prints `\r\nLED turned OFF\r\n`.
+   - `'r'` inverts PA1 using `HAL_GPIO_TogglePin()` and prints `\r\nLED toggled\r\n`.
+3. Uppercase letters and other characters are echoed back without triggering actuator state changes.
 
 ## 6. Pin Summary Table
 | Pin | Function | Peripheral | Connected Device | Purpose |
@@ -56,17 +56,17 @@ The application repeatedly polls USART1 using `HAL_UART_Receive()` with `HAL_MAX
 - [STM32CubeMX Project Configuration](project_files/UART_9.ioc)
 
 ## 8. Key Observations
+- The firmware strictly matches lowercase characters: uppercase input (`W`, `E`, `R`) does not trigger any GPIO action.
 - APB2 72 MHz clocking yielded exact integer division for 115200 baud with 0% clock error.
-- Full character echo creates a fluid, highly responsive command-line terminal experience.
-- The repository source strictly uses `'w'`, `'e'`, and `'r'`, resolving experimental notes that also explored `'t'` for toggle.
+- Full character echo creates a responsive command-line terminal experience.
 
 ## 9. Learning Outcomes
 - Understood asynchronous serial framing (start bit, data payload, stop bit) and baud divisor registers.
 - Gained experience interfacing STM32 hardware UART with external PC host serial terminals.
-- Implemented character decoding and state machine dispatching based on ASCII inputs.
+- Implemented character decoding and state machine dispatching based on exact ASCII character values.
 
 ## 10. Verification Note
-All documented pin assignments, baud rate parameters, and command decoding routines have been verified against `Core/Src/main.c` and validated against the laboratory evaluation rubric.
+All documented pin assignments, baud rate parameters, and command decoding routines have been verified against `Core/Src/main.c` (lines 117–141) and validated against the laboratory evaluation rubric.
 
 ## 11. Conclusion
-Continuous Lab Evaluation 9 was successfully verified. The STM32F103C8T6 reliably communicates over USART1 at 115200 baud, executes bidirectional character echoing, and correctly decodes commands to actuate the external LED.
+Continuous Lab Evaluation 9 was successfully verified. The STM32F103C8T6 communicates over USART1 at 115200 baud, executes bidirectional character echoing, and correctly decodes strictly lowercase `'w'`, `'e'`, and `'r'` commands to actuate the external LED.

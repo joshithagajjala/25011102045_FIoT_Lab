@@ -1,14 +1,15 @@
 ﻿# Continuous Lab Evaluation 13: BME280 Sensor Interfacing Using I2C and Bosch Sensor API
 
 ## 1. Overview
-Continuous Lab Evaluation 13 interfaces the Bosch Sensortec BME280 digital environmental sensor with the ARM Cortex-M4 STM32F401RET6 microcontroller on the STMicroelectronics Nucleo-64 development board. Operating over the I2C serial bus at 100 kHz, the system integrates the official vendor-provided Bosch BME280 C API. By reading on-chip factory calibration parameters, the firmware performs real-time polynomial compensation to compute accurate temperature (°C), barometric pressure (hPa), and relative humidity (%RH), transmitting continuous serial telemetry to a PC terminal via the integrated ST-LINK Virtual COM Port at 115200 baud.
+Continuous Lab Evaluation 13 interfaces the Bosch Sensortec BME280 digital environmental sensor with the ARM Cortex-M4 STM32F401RET6 microcontroller on the STMicroelectronics Nucleo-64 evaluation board. Operating over I2C at 100 kHz, the system integrates the modern Bosch BME280 C API using `dev.intf_ptr`, `dev.delay_us`, and `struct bme280_settings`. The sensor acquires factory-compensated temperature (°C), barometric pressure (hPa), and relative humidity (%RH) with the internal filter set to OFF, streaming telemetry to a PC terminal via USART2 over the ST-LINK Virtual COM Port at 115200 baud.
 
 ## 2. Objective
 - Configure the STM32F401RE I2C1 peripheral in Master Standard Mode (100 kHz) on pins PB6 (SCL) and PB7 (SDA) with open-drain outputs and pull-up resistors.
 - Configure USART2 (PA2/PA3) at 115200 baud for telemetry transmission across the ST-LINK Virtual COM Port.
-- Integrate the official Bosch Sensortec BME280 driver by developing custom platform abstraction callback functions (`user_i2c_read`, `user_i2c_write`, `user_delay_us`) wrapping STM32 HAL APIs.
-- Retrieve factory calibration trimming parameters from the sensor NVM and configure sensor operating modes and oversampling filters.
-- Periodically acquire raw ADC registers, compute calibrated environmental values, format telemetry strings, and stream data to a host serial terminal at 1 Hz.
+- Integrate the official modern Bosch Sensortec BME280 driver utilizing `dev.intf_ptr`, `dev.delay_us`, and custom HAL wrapper callbacks (`user_i2c_read`, `user_i2c_write`).
+- Configure sensor oversampling to 1X and record that the internal IIR filter is explicitly OFF (`BME280_FILTER_COEFF_OFF`).
+- Periodically sample calibrated environmental values and transmit telemetry strings across USART2.
+- Inspect the source code structure in `Core/Src/main.c` regarding the apparent extra closing brace.
 
 ## 3. Hardware and Software Used
 - **Target Platform**: STMicroelectronics NUCLEO-F401RE (ARM Cortex-M4 with FPU @ 84 MHz)
@@ -27,10 +28,9 @@ Continuous Lab Evaluation 13 interfaces the Bosch Sensortec BME280 digital envir
 - **USART2**:
   - `PA2`: USART2_TX routed to ST-LINK VCP RX.
   - `PA3`: USART2_RX routed to ST-LINK VCP TX.
-- **RCC & SysTick**: 84 MHz core clock synthesized via PLL; SysTick millisecond timebase for acquisition pacing.
 
 ## 5. Summary of Actual Implementation
-The application initializes the system clock, I2C1, and USART2. It instantiates the Bosch driver structure (`struct bme280_dev`), registers the HAL wrapper callbacks, sets the 7-bit device address to `0x76`, and invokes `bme280_init(&dev)`. The driver reads the 24 factory calibration parameters from sensor NVM. The sensor is configured for Normal Mode with oversampling and internal IIR filtering enabled. Every 1000 ms, the main loop executes `bme280_get_sensor_data()`, performs multi-order compensation calculations, converts pressure from Pa to hPa, and transmits formatted environmental metrics to the PC console.
+The application initializes system clocks, I2C1, and USART2. It configures the modern Bosch driver structure (`struct bme280_dev`), assigns `dev.intf_ptr = &dev_addr` (address `0x76`), and registers callback functions. It initializes `struct bme280_settings` with 1X oversampling and `settings.filter = BME280_FILTER_COEFF_OFF`. In the 1 Hz superloop, the firmware invokes `bme280_get_sensor_data()`, converts pressure to hPa, and streams formatted measurements to the PC terminal.
 
 ## 6. Pin Summary Table
 | Pin | Direction | Mode | Configuration | Hardware Role | Description |
@@ -50,17 +50,17 @@ The application initializes the system clock, I2C1, and USART2. It instantiates 
 - [STM32CubeMX Project Configuration](project_files/I2C-1.ioc)
 
 ## 8. Key Observations
-- The I2C address bit shifting (`dev_id << 1`) was essential: passing unshifted `0x76` caused `HAL_I2C_Mem_Read` to time out because bit 0 was interpreted as write instead of address alignment.
-- Reading all 8 data registers (`0xF7`–`0xFE`) in a single burst read guarantees atomic measurement consistency across pressure, temperature, and humidity.
-- Applying warm breath to the sensor immediately reflected a sharp rise in humidity (+15–20% RH) and a slight rise in temperature (+1–2°C), followed by a gradual decay back to ambient room conditions.
+- The firmware utilizes the modern Bosch API v3.5+ structure (`intf_ptr`, `delay_us`, `struct bme280_settings`).
+- The internal filter coefficient is explicitly configured to `BME280_FILTER_COEFF_OFF` (filter disabled).
+- A static syntax inspection of `Core/Src/main.c` confirms that the apparent extra closing brace at line 161 is syntactically valid in C: line 155 closes `while (1)`, line 161 closes `main()`, and the Doxygen comment for `SystemClock_Config` is positioned between them. Brace depth returns cleanly to zero; this represents a static syntax inspection of the translation unit's brace balance, not proof of successful compilation.
 
 ## 9. Learning Outcomes
-- Mastered I2C bus timing, open-drain configuration, pull-up sizing, and 7-bit/8-bit addressing dynamics.
-- Gained practical proficiency integrating official vendor-provided C sensor APIs using HAL wrapper functions.
-- Learned the mathematical necessity and implementation of factory calibration compensation algorithms for high-accuracy digital sensors.
+- Mastered I2C bus timing, open-drain configuration, and 7-bit to 8-bit addressing.
+- Gained practical proficiency integrating modern vendor-provided C sensor APIs using HAL wrapper functions.
+- Analyzed C source syntax, scope nesting, and compiler comment stripping rules.
 
 ## 10. Verification Note
-All documented pinout connections, I2C addresses, and driver callback implementations have been validated against the repository firmware (`Core/Src/main.c`, `bme280.c`) and evaluated against the laboratory evaluation rubric.
+All documented pinout connections, I2C addresses, and driver callback implementations have been validated against the repository firmware (`Core/Src/main.c`, `bme280.c`).
 
 ## 11. Conclusion
-Continuous Lab Evaluation 13 was successfully validated. The STM32F401RET6 Nucleo-64 board reliably communicates with the Bosch BME280 environmental sensor via I2C at 100 kHz, accurately applies factory compensation math, and streams calibrated temperature, pressure, and humidity readings over the ST-LINK Virtual COM Port.
+Continuous Lab Evaluation 13 was documented and analyzed. The modern Bosch BME280 API integration, filter OFF configuration, and source code brace structure were evaluated with exact fidelity to repository code.

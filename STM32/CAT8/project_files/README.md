@@ -224,9 +224,9 @@ END FUNCTION
 - **Short Press during Blinking**: Immediately stops the blinking cycle and holds the current LED state.
 
 ## 15. Actual Observations
-- The non-blocking 50 ms debounce threshold completely eliminated false contact toggles observed during rapid button clicking.
-- Oscilloscope measurement confirms the blink toggles every 500 ms ($\pm 1$ ms jitter bounded by loop execution latency).
-- **Polarity Note Grounding**: When wired with active-high polarity (button to 3.3V, PA1 pull-down), the system functions flawlessly according to firmware logic. Connecting button to ground without changing firmware internal pull registers results in permanent inactive state.
+- The non-blocking 50 ms debounce threshold filters mechanical switch contact bounce by requiring steady state before transitioning.
+- In software timing, `HAL_GetTick()` provides a 1 ms incrementing timebase; long-press classification activates blinking at 500 ms intervals while in blinking mode.
+- **Polarity Note Grounding**: When wired with active-high polarity (button to 3.3V, PA1 pull-down), the system functions according to firmware logic. Early student laboratory notes sketched a pull-up configuration, which differs from the repository's `GPIO_PULLDOWN` setup.
 
 ## 16. Troubleshooting
 1. **LED Never Illuminates**:

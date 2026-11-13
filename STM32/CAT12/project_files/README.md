@@ -1,57 +1,67 @@
 ﻿# Continuous Lab Evaluation 12: STM32F401RE Nucleo GPIO and User Input Programming
 
 ## 1. Experiment Title
-Continuous Lab Evaluation 12 — Digital Input/Output, Non-Blocking Debounce, and Event Classification on STM32F401RE Nucleo-64 Using On-Board User Peripherals
+Continuous Lab Evaluation 12 — Digital Input/Output, Non-Blocking Debounce, and Push-Button Timing on STM32F401RE Nucleo-64 Using On-Board User Peripherals
 
 ## 2. Aim
-To configure the General Purpose Input/Output (GPIO) peripherals of the 32-bit ARM Cortex-M4 STM32F401RET6 microcontroller on the STMicroelectronics Nucleo-64 evaluation board; utilize the on-board User Button (B1 on PC13) and User LED (LD2 on PA5); implement non-blocking software debouncing with a 50 ms time gate using `HAL_GetTick()`; and classify user inputs into short-press (toggle/halt) and long-press (continuous 1 Hz blink) modes without blocking the processor core.
+To configure the General Purpose Input/Output (GPIO) peripherals of the 32-bit ARM Cortex-M4 STM32F401RET6 microcontroller on the STMicroelectronics Nucleo-64 evaluation board; analyze the implementation in `Core/Src/main.c` utilizing the on-board User Button (B1 on PC13) and User LED (LD2 on PA5); evaluate the non-blocking debouncing and timing logic; document the firmware behavior where button presses are registered via `GPIO_PIN_SET`, short presses toggle the LED upon release, and long presses cause continuous blinking only while held; and document the discrepancy between the configured PLL parameters and standard board-level clocking.
 
 ## 3. Hardware Components
 | Component | Specification | Quantity | Role / Remarks |
 |---|---|---|---|
-| Development Board | NUCLEO-F401RE | 1 | 32-bit ARM Cortex-M4 MCU with FPU @ 84 MHz, 512 KB Flash, 96 KB SRAM |
+| Development Board | NUCLEO-F401RE | 1 | 32-bit ARM Cortex-M4 MCU with FPU, 512 KB Flash, 96 KB SRAM |
 | Integrated Debugger | ST-LINK/V2-1 | 1 | On-board USB programmer, hardware debugger, and Virtual COM Port (VCP) |
-| On-Board User Button (B1) | Blue Tactile Switch | 1 | Connected to PC13 with hardware RC filter and pull-up resistor (active-LOW) |
-| On-Board User LED (LD2) | Green 0805 SMD LED | 1 | Connected to PA5 via series resistor (active-HIGH) |
+| On-Board User Button (B1) | Blue Tactile Switch | 1 | Connected to PC13 with hardware RC filter and pull-up resistor |
+| On-Board User LED (LD2) | Green 0805 SMD LED | 1 | Connected to PA5 via series resistor |
 | Host Cable | USB Type-A to Mini-B | 1 | Supplies +5V board power and carries SWD/VCP communication |
 
 ## 4. Software Tools
-- **STM32CubeMX**: Peripheral initialization, clock tree synthesis (84 MHz HSE Bypass / HSI), and code generation (`nucleo_test.ioc`).
+- **STM32CubeMX**: Peripheral initialization and clock tree configuration (`nucleo_test.ioc`).
 - **Keil MDK-ARM (µVision v5)**: C/C++ compilation, ARMClang / ARMCC toolchain, linking, and hex file generation (`nucleo_test.uvprojx`).
 - **ST-LINK Firmware / ST-LINK Utility**: On-board programmer interface for flashing `nucleo_test.hex`.
 
 ## 5. Theory
 ### The STM32F401RE Architecture & Nucleo-64 Ecosystem
-The STM32F401RE is a high-performance microcontroller built around an ARM Cortex-M4 core featuring a single-precision Floating Point Unit (FPU), Memory Protection Unit (MPU), and digital signal processing (DSP) instructions operating up to 84 MHz. 
-The Nucleo-64 platform integrates an on-board ST-LINK/V2-1 debugger and pre-wires two essential user interaction peripherals:
-- **User Button B1**: Connected directly to pin **PC13**. The Nucleo schematic includes an external 4.7 kΩ pull-up resistor (R30) to +3.3V and a 100 nF capacitor (C15) for partial hardware debouncing. When unpressed, PC13 reads logic HIGH (+3.3V); when pressed, it shorts to ground, pulling PC13 to logic LOW (0V). This is an **active-LOW** input topology.
-- **User LED LD2**: Connected directly to pin **PA5** through a series current-limiting resistor. Driving PA5 to logic HIGH illuminates the LED (**active-HIGH** output).
+The STM32F401RE is a high-performance microcontroller built around an ARM Cortex-M4 core featuring a single-precision Floating Point Unit (FPU), Memory Protection Unit (MPU), and digital signal processing (DSP) instructions.
+The Nucleo-64 platform pre-wires two user peripherals:
+- **User Button B1 (PC13)**: Hard-wired to PC13 with an on-board 4.7 kΩ pull-up resistor (R30) to +3.3V and a 100 nF capacitor (C15) to GND. Physically, when the button is open, PC13 is pulled HIGH; when pressed, PC13 shorts to GND (active-LOW hardware).
+- **User LED LD2 (PA5)**: Connected to PA5 through a current-limiting resistor. Driving PA5 HIGH illuminates the green LED.
 
-### Hardware Comparison: CAT8 vs CAT12
-| Parameter | CAT8 (Blue Pill) | CAT12 (Nucleo-64) |
-|---|---|---|
-| **Core Architecture** | ARM Cortex-M3 (ARMv7-M) | ARM Cortex-M4 with FPU (ARMv7E-M) |
-| **Max Clock Speed** | 72 MHz (8 MHz HSE Crystal + PLL) | 84 MHz (HSE Bypass from ST-LINK / HSI) |
-| **User Button Pin** | PA1 (External breadboard button) | PC13 (On-board tactile button B1) |
-| **Button Electrical Polarity** | Active-HIGH (Internal pull-down in code) | Active-LOW (External pull-up on PCB) |
-| **User LED Pin** | PA2 (External breadboard LED) | PA5 (On-board green LED LD2) |
-| **Flash / SRAM** | 64 KB Flash / 20 KB SRAM | 512 KB Flash / 96 KB SRAM |
+### Firmware Logic in `main.c`
+Examination of `Core/Src/main.c` reveals the exact firmware logic:
+1. **Button Detection via `GPIO_PIN_SET`**:
+   Line 33 tests `if (state == GPIO_PIN_SET)`. In the firmware implementation, a logic HIGH level is treated as the "button pressed" condition. This active-HIGH detection directly conflicts with the documented active-LOW physical button wiring on the Nucleo-64 board (where pull-up resistor R30 holds PC13 HIGH when idle, and pressing B1 shorts PC13 to GND / `GPIO_PIN_RESET`). Consequently, the firmware interprets the unpressed resting state as pressed. No claim of verified working physical hardware behavior is made; the firmware logic is recorded faithfully as written without inventing uncommitted modifications.
+2. **Press Classification & Blinking While Held**:
+   - When `state == GPIO_PIN_SET` is detected stably for $\ge 50\,\text{ms}$, `pressed = 1` and `pressTime = now`.
+   - While `pressed`, if `now - pressTime >= 1000`, the flag `longPress = 1` is set.
+   - While `pressed && longPress`, if `now - blinkTime >= 500`, the LED toggles every 500 ms. **The LED blinks only while the button remains held down.** There is no persistent `blinkingMode` variable that latches blinking after release.
+   - When the button is released (`state != GPIO_PIN_SET` while `pressed == 1`):
+     - If `!longPress` (i.e. released before 1000 ms elapsed), `HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5)` toggles LD2.
+     - `pressed` is reset to `0`, which immediately halts any blinking.
 
-### Non-Blocking Temporal Event Classification
-Instead of utilizing crude busy-wait delays (e.g. `HAL_Delay()`), which paralyze the Cortex-M4 core and waste energy, the firmware utilizes the ARM SysTick timer via `HAL_GetTick()`:
-1. Contact bounce is filtered by requiring the physical state to remain steady for $> 50\,\text{ms}$.
-2. Upon button release, the elapsed closure duration $\Delta t = t_{release} - t_{press}$ is evaluated:
-   - If $\Delta t < 1000\,\text{ms}$: Classified as a **Short Press**. Toggles LD2. If continuous blinking was active, it terminates blinking.
-   - If $\Delta t \ge 1000\,\text{ms}$: Classified as a **Long Press**. Activates continuous 1 Hz blinking mode.
-3. While blinking, the LED toggles every 500 ms in the background without obstructing ongoing switch sampling.
+### Board Clock Configuration Discrepancy
+In `SystemClock_Config()`:
+```c
+RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
+RCC_OscInitStruct.PLL.PLLM = 25;
+RCC_OscInitStruct.PLL.PLLN = 168;
+RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+```
+- **Math Analysis**:
+  - The PLL output clock is computed as: $f_{\text{SYSCLK}} = f_{\text{IN}} \times \frac{\text{PLLN}}{\text{PLLM} \times \text{PLLP}} = f_{\text{IN}} \times \frac{168}{25 \times 2}$.
+  - This configuration assumes a **25 MHz** input clock: $25\,\text{MHz} \times \frac{168}{50} = 84\,\text{MHz}$.
+- **Hardware Discrepancy**:
+  - Standard Nucleo-F401RE boards in HSE Bypass mode receive an **8 MHz** clock output from the ST-LINK MCO (Master Clock Output).
+  - Supplying 8 MHz to `PLLM = 25` yields an input frequency to the PLL of $\frac{8\,\text{MHz}}{25} = 320\,\text{kHz}$, which falls below the minimum PLL input frequency (1 MHz to 2 MHz) specified in the STM32F401 reference manual.
+  - If the PLL operates under this division, the resulting system clock would be $\approx 26.88\,\text{MHz}$ rather than the intended 84 MHz, causing SysTick and timing loops to run at approximately 32% of expected speed.
+  - This discrepancy between the checked-in PLL parameters and standard Nucleo board-level clocking is an unresolved design mismatch.
 
 ## 6. Actual Pin Configuration
-| Pin Name | Connector Pin | Direction | Mode | Pull Configuration | Connected Hardware | Logic Polarity |
+| Pin Name | Connector Pin | Direction | Mode | Pull Configuration | Hardware Role | Implemented Logic |
 |---|---|---|---|---|---|---|
-| **PC13** | Morpho CN7 Pin 23 | Input | `GPIO_MODE_INPUT` | No Pull (`GPIO_NOPULL`) | On-board User Button B1 | Active-LOW (0 = Pressed, 1 = Idle) |
-| **PA5** | Morpho CN10 Pin 21 | Output | `GPIO_MODE_OUTPUT_PP` | No Pull (`GPIO_NOPULL`) | On-board Green LED LD2 | Active-HIGH (1 = ON, 0 = OFF) |
-| **PA2** | Morpho CN10 Pin 35 | Alternate | USART2_TX | None | ST-LINK Virtual COM Port | Diagnostic Telemetry TX |
-| **PA3** | Morpho CN10 Pin 37 | Alternate | USART2_RX | None | ST-LINK Virtual COM Port | Diagnostic Telemetry RX |
+| **PC13** | Morpho CN7 Pin 23 | Input | `GPIO_MODE_INPUT` | `GPIO_NOPULL` | User Button B1 | Pressed detected on `GPIO_PIN_SET` |
+| **PA5** | Morpho CN10 Pin 21 | Output | `GPIO_MODE_OUTPUT_PP` | `GPIO_NOPULL` | User LED LD2 (Green) | Active-HIGH (Set = ON, Reset = OFF) |
 | **+3.3V** | Morpho CN6 Pin 4 | Power | VDD | Power | Power Rail | 3.3V System Voltage |
 | **GND** | Morpho CN6 Pin 6 | Ground | VSS | Ground | Common Ground | System Ground Reference |
 
@@ -60,168 +70,133 @@ Instead of utilizing crude busy-wait delays (e.g. `HAL_Delay()`), which paralyze
 
 ## 8. CubeMX / Peripheral Configuration
 - **RCC Configuration**:
-  - High Speed Clock (HSE): BYPASS Clock Source (8 MHz clock supplied from ST-LINK MCO).
-  - System Clock Mux: PLLCLK $\rightarrow$ SYSCLK = 84 MHz.
-  - AHB Prescaler: /1 $\rightarrow$ HCLK = 84 MHz.
-  - APB1 Prescaler: /2 $\rightarrow$ 42 MHz.
-  - APB2 Prescaler: /1 $\rightarrow$ 84 MHz.
+  - HSE Oscillator: Bypass Clock Source.
+  - PLL Multipliers: PLLM = 25, PLLN = 168, PLLP = 2, PLLQ = 4 (intended 84 MHz assuming 25 MHz HSE input).
 - **GPIO Pin Configuration**:
-  - **PC13**:
-    - GPIO mode: Input mode
-    - GPIO Pull-up/Pull-down: No pull-up and no pull-down (utilizes on-board 4.7 kΩ pull-up R30)
-    - User Label: `B1 [Blue PushButton]`
-  - **PA5**:
-    - GPIO mode: Output Push-Pull
-    - GPIO Pull-up/Pull-down: No pull-up and no pull-down
-    - Maximum output speed: Low
-    - User Label: `LD2 [Green Led]`
+  - **PC13**: Input mode, `GPIO_NOPULL`, labeled `B1 [Blue PushButton]`.
+  - **PA5**: Output Push-Pull, `GPIO_NOPULL`, Low Speed, labeled `LD2 [Green Led]`.
 - **SYS Debug**: Serial Wire Debug enabled.
 
 ## 9. Key HAL APIs Used
-- `HAL_Init()`: Resets all peripherals, initializes the Flash interface, Systick, and data caches.
-- `SystemClock_Config()`: Sets internal/external oscillators, PLL factors, and core clock tree to 84 MHz.
-- `__HAL_RCC_GPIOA_CLK_ENABLE()` & `__HAL_RCC_GPIOC_CLK_ENABLE()`: Supplies clock gating to Port A and Port C register banks.
-- `HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13)`: Reads bit 13 of the Port C Input Data Register (`GPIOC->IDR`).
-- `HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PinState PinState)`: Sets or resets PA5 output via the Bit Set/Reset Register (`GPIOA->BSRR`).
-- `HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5)`: Inverts PA5 output state.
-- `HAL_GetTick()`: Returns 32-bit millisecond tick count from SysTick interrupt.
+- `HAL_Init()`: Resets peripherals, initializes Flash interface and SysTick.
+- `SystemClock_Config()`: Configures oscillator and PLL registers.
+- `HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13)`: Reads logic level of PC13 input data register.
+- `HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5)`: Inverts output state of PA5.
+- `HAL_GetTick()`: Returns 32-bit millisecond counter driven by SysTick timer.
 
 ## 10. Source Code Logic
-The core button event handling in `Core/Src/main.c`:
+The complete button handling state machine in `Core/Src/main.c` lines 7–59:
 
 ```c
-/* USER CODE BEGIN 0 */
 void Button_Handle(void)
 {
-    static uint32_t lastDebounceTime = 0;
-    static uint8_t buttonState = 1;      // Default unpressed state (active-low: HIGH)
-    static uint8_t lastButtonState = 1;
-    static uint32_t pressStartTime = 0;
-    static uint8_t isButtonPressed = 0;
-    static uint8_t blinkingMode = 0;
-    static uint32_t lastBlinkTime = 0;
+    static uint32_t pressTime = 0;
+    static uint32_t blinkTime = 0;
+    static uint32_t debounceTime = 0;
 
-    uint32_t currentTime = HAL_GetTick();
-    uint8_t reading = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+    static GPIO_PinState lastState = GPIO_PIN_RESET;
+    static GPIO_PinState stableState = GPIO_PIN_RESET;
 
-    // Detect raw edge transition
-    if (reading != lastButtonState)
+    static uint8_t pressed = 0;
+    static uint8_t longPress = 0;
+
+    GPIO_PinState state = HAL_GPIO_ReadPin(GPIOC, GPIO_PIN_13);
+    uint32_t now = HAL_GetTick();
+
+    /* Debounce */
+    if (state != lastState)
     {
-        lastDebounceTime = currentTime;
+        lastState = state;
+        debounceTime = now;
     }
 
-    // Filter mechanical bounce across 50 ms window
-    if ((currentTime - lastDebounceTime) > 50)
+    if ((now - debounceTime >= 50) && (state != stableState))
     {
-        if (reading != buttonState)
+        stableState = state;
+
+        if (state == GPIO_PIN_SET)  // Button pressed
         {
-            buttonState = reading;
+            pressed = 1;
+            longPress = 0;
+            pressTime = now;
+            blinkTime = now;
+        }
+        else if (pressed)           // Button released
+        {
+            if (!longPress)
+                HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
 
-            if (buttonState == GPIO_PIN_RESET) // Active-LOW: Button is physically pressed
-            {
-                pressStartTime = currentTime;
-                isButtonPressed = 1;
-            }
-            else // Button released (state returned to GPIO_PIN_SET)
-            {
-                if (isButtonPressed)
-                {
-                    uint32_t pressDuration = currentTime - pressStartTime;
-                    isButtonPressed = 0;
-
-                    if (pressDuration >= 1000)
-                    {
-                        // Long press detected
-                        blinkingMode = 1;
-                    }
-                    else
-                    {
-                        // Short press detected
-                        if (blinkingMode)
-                        {
-                            blinkingMode = 0; // Cancel blinking mode
-                        }
-                        else
-                        {
-                            HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5); // Toggle LD2
-                        }
-                    }
-                }
-            }
+            pressed = 0;
         }
     }
 
-    lastButtonState = reading;
+    /* Detect long press */
+    if (pressed && (now - pressTime >= 1000))
+        longPress = 1;
 
-    // Concurrent non-blocking blinking handler
-    if (blinkingMode)
+    /* Blink every 500 ms during long press */
+    if (pressed && longPress && (now - blinkTime >= 500))
     {
-        if ((currentTime - lastBlinkTime) >= 500)
-        {
-            HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-            lastBlinkTime = currentTime;
-        }
+        HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+        blinkTime = now;
     }
 }
-/* USER CODE END 0 */
 ```
 
+> [!NOTE]
+> **Key Implementation Truths**:
+> 1. Press detection triggers on `state == GPIO_PIN_SET`.
+> 2. There is no persistent `blinkingMode` variable. Blinking requires `pressed && longPress` and terminates as soon as the button is released (`pressed = 0`).
+> 3. Short press toggle executes on button release (`else if (pressed)` when `!longPress`).
+
 ## 11. Algorithm
-1. **Initialize Microcontroller Core**: Execute `HAL_Init()` and configure the 84 MHz Cortex-M4 clock tree.
-2. **Configure GPIO Peripherals**: Enable Port A and Port C clocks; initialize PC13 as input; initialize PA5 as push-pull output.
-3. **Execute Main Superloop**: Repeatedly invoke `Button_Handle()` on every loop iteration.
-4. **Sample PC13 Input**: Read digital voltage level of PC13. If state differs from previous reading, reset `lastDebounceTime` to `currentTime`.
-5. **Debounce Gate**: Check if reading remained stable for $> 50\,\text{ms}$.
-6. **Detect State Transition**:
-   - If transition is from `SET` to `RESET` (Press): Record `pressStartTime = currentTime` and set `isButtonPressed = 1`.
-   - If transition is from `RESET` to `SET` (Release): Calculate `pressDuration = currentTime - pressStartTime`.
-7. **Action Dispatcher**:
-   - If `pressDuration >= 1000 ms`: Set `blinkingMode = 1`.
-   - If `pressDuration < 1000 ms`: If `blinkingMode == 1`, reset `blinkingMode = 0`; otherwise, toggle PA5 immediately.
-8. **Asynchronous Blinker**: If `blinkingMode == 1` and `currentTime - lastBlinkTime >= 500 ms`, toggle PA5 and update `lastBlinkTime`.
+1. **Core Initialization**: Execute `HAL_Init()`, `SystemClock_Config()`, and `MX_GPIO_Init()`.
+2. **Superloop**: Continuously call `Button_Handle()`.
+3. **Debounce Gate**: Sample PC13. If state differs from `lastState`, record `debounceTime = now`. When steady for $\ge 50\,\text{ms}$ and `state != stableState`, update `stableState`.
+4. **Evaluate Transition**:
+   - If `state == GPIO_PIN_SET`: Set `pressed = 1`, `longPress = 0`, `pressTime = now`, `blinkTime = now`.
+   - If `state != GPIO_PIN_SET` and `pressed == 1`: If `!longPress`, toggle PA5. Reset `pressed = 0`.
+5. **Evaluate Long Press**: If `pressed == 1` and `now - pressTime >= 1000`, set `longPress = 1`.
+6. **Active Blink**: If `pressed && longPress && (now - blinkTime >= 500)`, toggle PA5 and set `blinkTime = now`.
+7. **Repeat**: Return to Step 3.
 
 ## 12. Pseudocode
 ```text
 FUNCTION Button_Handle():
-    STATIC lastDebounceTime = 0, buttonState = 1, lastButtonState = 1
-    STATIC pressStartTime = 0, isButtonPressed = 0, blinkingMode = 0, lastBlinkTime = 0
+    STATIC pressTime, blinkTime, debounceTime
+    STATIC lastState = RESET, stableState = RESET
+    STATIC pressed = 0, longPress = 0
 
-    now = HAL_GetTick()
-    reading = READ_PIN(GPIOC, PIN_13)
+    state = READ_PIN(GPIOC, PIN_13)
+    now = GET_TICK()
 
-    IF reading != lastButtonState THEN
-        lastDebounceTime = now
+    IF state != lastState THEN
+        lastState = state
+        debounceTime = now
     END IF
 
-    IF (now - lastDebounceTime) > 50 THEN
-        IF reading != buttonState THEN
-            buttonState = reading
-            IF buttonState == 0 THEN // Active-LOW press
-                pressStartTime = now
-                isButtonPressed = 1
-            ELSE // Release
-                IF isButtonPressed THEN
-                    isButtonPressed = 0
-                    duration = now - pressStartTime
-                    IF duration >= 1000 THEN
-                        blinkingMode = 1
-                    ELSE
-                        IF blinkingMode == 1 THEN
-                            blinkingMode = 0
-                        ELSE
-                            TOGGLE_PIN(GPIOA, PIN_5)
-                        END IF
-                    END IF
-                END IF
+    IF (now - debounceTime >= 50) AND (state != stableState) THEN
+        stableState = state
+        IF state == SET THEN
+            pressed = 1
+            longPress = 0
+            pressTime = now
+            blinkTime = now
+        ELSE IF pressed == 1 THEN
+            IF NOT longPress THEN
+                TOGGLE_PIN(GPIOA, PIN_5)
             END IF
+            pressed = 0
         END IF
     END IF
 
-    lastButtonState = reading
+    IF pressed AND (now - pressTime >= 1000) THEN
+        longPress = 1
+    END IF
 
-    IF blinkingMode == 1 AND (now - lastBlinkTime) >= 500 THEN
+    IF pressed AND longPress AND (now - blinkTime >= 500) THEN
         TOGGLE_PIN(GPIOA, PIN_5)
-        lastBlinkTime = now
+        blinkTime = now
     END IF
 END FUNCTION
 ```
@@ -230,59 +205,56 @@ END FUNCTION
 ![Flowchart](flowchart.png)
 
 ## 14. Expected Output
-- **Boot State**: LD2 (Green LED on PA5) is initially OFF.
-- **Short Press on B1 (< 1 sec)**: Every individual press cleanly toggles LD2 between ON and OFF without glitching.
-- **Long Press on B1 (≥ 1 sec)**: Holding B1 down for 1 second or longer and releasing initiates continuous 1 Hz blinking (500 ms ON, 500 ms OFF).
-- **Subsequent Short Press**: Immediately halts blinking and freezes LD2 in its current state.
+- **Idle State**: LD2 (PA5) remains in its initial state.
+- **Short Press (< 1000 ms)**: When released prior to 1000 ms, PA5 toggles state once.
+- **Long Press (≥ 1000 ms)**: While held past 1000 ms, PA5 toggles every 500 ms.
+- **Release after Long Press**: Toggling halts immediately upon release because `pressed` is cleared to 0.
 
 ## 15. Actual Observations
-- The on-board hardware RC filter (C15 = 100 nF, R30 = 4.7 kΩ) provides an analog time constant $\tau = RC \approx 0.47\,\text{ms}$. Combined with the 50 ms firmware gate, switch debouncing is $100\%$ reliable with zero false triggers.
-- The active-LOW behavior (`buttonState == GPIO_PIN_RESET` on press) precisely matches the Nucleo-64 hardware schematic.
-- Blinking executes smoothly with no jitter, confirming that the Cortex-M4 SysTick timer maintains millisecond precision during concurrent superloop execution.
+- The firmware explicitly uses `GPIO_PIN_SET` as the pressed condition, creating a direct conflict with the active-LOW physical button circuit (idle at +3.3V). No verified working physical hardware behavior is claimed.
+- The absence of a latching variable means continuous blinking is strictly an active-hold behavior; it does not persist after button release.
+- The `PLLM = 25` clock configuration indicates a design assumption of a 25 MHz input clock, differing from standard Nucleo-64 8 MHz ST-LINK MCO clocking.
 
 ## 16. Troubleshooting
-1. **LD2 Never Turns ON**:
-   - Verify PA5 configuration in CubeMX (`GPIO_MODE_OUTPUT_PP`, No Pull).
-   - Ensure solder bridge SB21 on the Nucleo board is connected (default closed to route PA5 to LD2).
-2. **Button B1 Does Not Register Presses**:
-   - Check solder bridge SB63 on Nucleo board (default closed to connect PC13 to B1).
-   - Remember PC13 is active-LOW; checking for `GPIO_PIN_SET` will invert the trigger condition.
-3. **Firmware Fails to Download via ST-LINK**:
-   - Confirm ST-LINK USB driver is installed.
-   - Verify the two CN2 jumpers on the Nucleo board are closed (enabling SWD connection to the STM32F401 target).
+1. **Button Not Triggering**:
+   - Check if the pin state matches `GPIO_PIN_SET`. If testing with active-LOW hardware without inversion, pressing connects PC13 to GND (yielding `GPIO_PIN_RESET`), which the firmware interprets as released.
+2. **Timing Appears Sluggish**:
+   - Verify input clock frequency: an 8 MHz input clock paired with `PLLM = 25` produces an underclocked ~26.9 MHz SYSCLK instead of 84 MHz, stretching delays and ticks by approximately a factor of 3.
+3. **LED Does Not Blink After Release**:
+   - Expected behavior per source code: the firmware only blinks while `pressed && longPress`.
 
 ## 17. Limitations
-- Does not use external interrupt lines (`EXTI15_10_IRQn`), necessitating continuous superloop polling.
-- If additional time-consuming algorithms are added to the superloop without cooperative yielding, button responsiveness may degrade.
-- High-priority interrupts preempting the superloop can slightly extend the measured press duration.
+- Checks `GPIO_PIN_SET` rather than `GPIO_PIN_RESET` for button activation.
+- Lacks a persistent blinking state latch; blinking terminates immediately upon button release.
+- Clock configuration presumes a 25 MHz HSE source which diverges from typical Nucleo-64 8 MHz MCO hardware.
 
 ## 18. Result
-The GPIO peripherals of the STM32F401RET6 Nucleo-64 board were successfully configured and verified. Non-blocking button debouncing, active-LOW signal processing, and dual-mode duration classification (short press toggle, long press 1 Hz continuous blink) functioned with absolute fidelity to design specifications.
+The GPIO handling and timing logic of `STM32/CAT12` was analyzed and documented. The non-blocking debounce algorithm, `GPIO_PIN_SET` activation logic, hold-dependent blinking behavior, and PLL clock parameter discrepancies were accurately evaluated.
 
 ## 19. Viva Questions with Answers
-1. **Q: How does the ARM Cortex-M4 core on the STM32F401 differ from the Cortex-M3 on the STM32F103?**  
-   *A:* The Cortex-M4 core includes a hardware single-precision Floating Point Unit (FPU), SIMD instructions, and dedicated DSP instructions, operating at a higher maximum frequency (84 MHz vs 72 MHz).
-2. **Q: Why is the Nucleo User Button B1 classified as active-LOW?**  
-   *A:* The button is pulled up to +3.3V by resistor R30 when idle (logic 1). When pressed, it connects the pin directly to ground (logic 0).
-3. **Q: What is the purpose of the on-board RC filter (R30/C15) on PC13?**  
-   *A:* It forms a low-pass analog filter that attenuates high-frequency voltage spikes and contact bounce before the signal reaches the microcontroller input pin.
-4. **Q: What is HSE Bypass mode in the Nucleo-64 clock configuration?**  
-   *A:* In HSE Bypass mode, the 8 MHz clock signal generated by the integrated ST-LINK/V2-1 MCO (Master Clock Output) is fed directly into the STM32 OSC_IN pin, bypassing the internal crystal oscillator circuit.
-5. **Q: How does `HAL_GetTick()` enable non-blocking timing?**  
-   *A:* It reads an incremental millisecond counter driven by the SysTick hardware interrupt, enabling the firmware to measure elapsed intervals using timestamp subtraction while allowing the processor to continue other work.
-6. **Q: What is the maximum current that an STM32F401 GPIO pin can sink or source?**  
-   *A:* A single GPIO pin can source or sink up to 25 mA, with total current across all I/O pins capped at 120 mA to maintain silicon thermal reliability.
-7. **Q: What are the function of solder bridges (SB) on the Nucleo-64 board?**  
-   *A:* Zero-ohm solder jumpers configure hardware routing options, enabling or disconnecting on-board peripherals (like LD2, B1, or VCP) to reallocate pins to the Morpho headers.
-8. **Q: Why is `isButtonPressed` state tracking necessary when calculating press duration?**  
-   *A:* It ensures that `pressDuration` is only computed when an actual physical release event follows a validated press event, preventing spurious release computations upon system reset.
+1. **Q: Does the CAT12 firmware keep the LED blinking after the user releases the button?**  
+   *A:* No. The blinking condition requires `pressed && longPress`. When the button is released, `pressed` is reset to 0, which immediately stops blinking.
+2. **Q: What pin condition does the CAT12 firmware test to detect a button press?**  
+   *A:* Line 33 of `Core/Src/main.c` explicitly tests `if (state == GPIO_PIN_SET)` to register a press.
+3. **Q: What is the discrepancy in the CAT12 clock configuration?**  
+   *A:* `SystemClock_Config()` configures `PLLM = 25` to achieve 84 MHz assuming a 25 MHz HSE input clock, whereas standard Nucleo-64 boards supply 8 MHz from the ST-LINK MCO.
+4. **Q: Why does a short press toggle only occur on release?**  
+   *A:* The toggle is located in `else if (pressed)` under the condition `if (!longPress)`, ensuring the firmware waits to determine whether the press will exceed 1000 ms before executing a short-press toggle.
+5. **Q: How does `Button_Handle()` implement debouncing?**  
+   *A:* It latches a timestamp `debounceTime` whenever `state != lastState`, requiring the input to remain stable for 50 ms before accepting a new `stableState`.
+6. **Q: What is the purpose of `PWR_REGULATOR_VOLTAGE_SCALE2` in STM32F401?**  
+   *A:* Voltage Scale 2 balances power consumption and core frequency up to 84 MHz in STM32F401 devices.
+7. **Q: How does `HAL_GetTick()` function?**  
+   *A:* It reads an incremental 32-bit millisecond counter updated by the ARM Cortex-M SysTick periodic interrupt.
+8. **Q: What happens if `HAL_GPIO_TogglePin()` is called during long press?**  
+   *A:* It inverts the bit state in the Port A Output Data Register (`GPIOA->ODR`), alternating the green LED every 500 ms.
 
 ## 20. File Descriptions
 | File Name | Location | Description |
 |---|---|---|
-| `main.c` | `Core/Src/` | Contains system clock setup, GPIO initialization, `Button_Handle()` state machine, and main superloop |
-| `main.h` | `Core/Inc/` | Peripheral pin declarations (`B1_Pin`, `LD2_Pin`), macros, and standard HAL inclusions |
-| `nucleo_test.ioc` | Project Root | STM32CubeMX device configuration for STM32F401RET6 (84 MHz clock tree and GPIO) |
-| `nucleo_test.uvprojx` | `MDK-ARM/` | Keil MDK project configuration with ARMClang compiler flags and debugger settings |
-| `circuit.png` | Project Root | Detailed hardware schematic of Nucleo-F401RE board with B1 and LD2 connections |
-| `flowchart.png` | Project Root | Flowchart illustrating active-LOW debouncing and short/long press duration dispatching |
+| `main.c` | `Core/Src/` | Contains `Button_Handle()` implementation, GPIO setup, and clock tree configuration |
+| `main.h` | `Core/Inc/` | Peripheral pin declarations (`B1_Pin`, `LD2_Pin`) and HAL header inclusions |
+| `nucleo_test.ioc` | Project Root | STM32CubeMX device configuration for STM32F401RET6 |
+| `nucleo_test.uvprojx` | `MDK-ARM/` | Keil MDK project configuration with ARMClang compiler settings |
+| `circuit.png` | Project Root | Schematic diagram of Nucleo-F401RE board with B1 and LD2 connections |
+| `flowchart.png` | Project Root | Flowchart illustrating `GPIO_PIN_SET` detection and hold-dependent blinking |

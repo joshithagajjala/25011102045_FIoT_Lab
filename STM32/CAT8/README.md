@@ -51,9 +51,9 @@ The firmware executes a non-blocking state machine in `Button_Handle()` within t
 - [STM32CubeMX Project Configuration](project_files/LED_MANIP.ioc)
 
 ## 8. Key Observations
-- Mechanical switch bounce of approximately 8–15 ms was observed on oscilloscope captures upon physical contact closure, which was completely rejected by the 50 ms time gate.
-- Long-press detection reliably triggered continuous blinking only after the switch was held past the 1000 ms threshold and subsequently released.
-- The active-high code implementation (`GPIO_PULLDOWN` with button tied to 3.3V) operates robustly without floating-input oscillations.
+- The 50 ms debounce threshold filters mechanical switch contact bounce by requiring the physical state to remain steady before updating `buttonState`.
+- Long-press detection triggers continuous blinking when the switch is held past the 1000 ms threshold and subsequently released.
+- The active-high code implementation (`GPIO_PULLDOWN` with button tied to 3.3V) differs from the active-low pull-up circuit sketched in early student notes.
 
 ## 9. Learning Outcomes
 - Acquired hands-on proficiency with STM32CubeMX clock tree synthesis and HAL peripheral initialization.
