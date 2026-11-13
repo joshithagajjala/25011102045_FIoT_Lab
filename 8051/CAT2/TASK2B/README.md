@@ -1,10 +1,17 @@
 ﻿# Continuous Assessment Test 2 (CAT2) — TASK2B
 
 ### EXP
-Continuous Assessment Test 2 (CAT2) / Continuous Lab Evaluation-2
+CAT2 — Continuous Assessment Test 2  
+*(Shiv Nadar University, Chennai — Department of Computer Science)*  
+*Course: 25CS2741 Fundamentals of Internet of Things + Lab*
+
+---
 
 ### DATE
-20/07/2026 (Week 2)
+20/07/2026 (Week 2)  
+*(Official evaluation date specified in the CAT2 question paper)*
+
+---
 
 ### NAME OF EXP
 Bare-Metal LED Blinking Using AT89S52 Microcontroller  
@@ -14,90 +21,112 @@ Bare-Metal LED Blinking Using AT89S52 Microcontroller
 
 ### HARDWARE SETUP / PLATFORM
 
-#### Confirmed Platform Details
-- **Microcontroller**: Atmel / Microchip AT89S52 (8051 architecture)
-- **Board**: AT89S52 Development Board (exact board manufacturer/model unconfirmed)
-- **Clock Frequency**: 11.0592 MHz crystal oscillator reported (note: software delay loop comment mentions 12 MHz calculation)
-- **Reported User LED Pin**: P1.0 (reported by student)
-- **Software Toolchain**: Keil µVision IDE / C51 Compiler and Programiz (online C programming editor)
-- **Physical Programming Device**: Not confirmed (hardware ISP programmer model to be confirmed)
-- **LED Electrical Configuration**: Active-low configuration assumed by firmware logic
+#### 1. Confirmed Hardware Platform
+- **Microcontroller**: Atmel / Microchip AT89S52 (8-bit 8051 / MCS-51 CISC architecture)
+- **Development Board**: AmBTech Labs 8051 Development Board (identified via PCB silk-screen marking)
+- **Clock Frequency**: 11.0592 MHz crystal oscillator (crystal load capacitors integrated on board, exact values unverified)
+- **Target GPIO Pin**: Port 1, specifically Pin 1 (P1.0)
+- **Power Supply**: Nominal 5.0 V DC (operating rail voltage unmeasured with multimeter)
+- **Dual LED Setup**:
+  1. **Onboard User LED**: Integrated on the AmBTech Labs development board and associated with P1.0.
+  2. **External Breadboard LED**: Connected externally to P1.0 through a series current-limiting resistor to ground (`P1.0 → R_LED → LED Anode → LED Cathode → GND`).
+- **Resistor Specification**: Current-limiting resistor labeled `R_LED (value unverified)` (recalled by student; resistance not independently measured or verified as 330 Ω).
+
+#### 2. Toolchain and Programming Hierarchy
+- **Software IDE & Toolchain**: Keil µVision (C51 Compiler, A51 Macro Assembler, BL51 Linker/Locator). Used for writing code, building `STARTUP.A51` and `main.c`, and generating Intel HEX firmware (`Objects/led_test.hex`).
+- **Device Flashing Utility**: ProgISP v1.72 (`progisp.exe`). A Windows PC utility used to load the compiled HEX file over USB into the microcontroller's Flash memory.
+- **Physical ISP Programmer**: Dedicated hardware device programmer (specific model unconfirmed; e.g., USBasp or compatible ISP programmer).
 
 > [!NOTE]
-> **Toolchain Roles vs Hardware Programmers:** Keil µVision is an integrated development environment (IDE) and compiler toolchain, and Programiz is an online code editor/compiler. Neither is a hardware device programmer. Firmware flashing requires a dedicated physical hardware programmer (such as an ISP programmer or USB-to-UART/SPI bootloader), which remains unconfirmed.
+> **Toolchain Distinction:** Keil µVision is an IDE and compiler toolchain, while ProgISP v1.72 is a flashing software utility. Neither is a hardware programmer. Physical in-system programming requires an external ISP hardware programmer interfacing with the AT89S52 ISP pins (MOSI/P1.5, MISO/P1.6, SCK/P1.7, RST).
 
 > [!IMPORTANT]
-> **Byte-Wide Port Operation:** The firmware implementation in `main.c` assigns values directly to the full 8-bit Port 1 register (`P1 = 0x00;` and `P1 = 0xFF;`). This drives all eight pins of Port 1 (P1.0 through P1.7) simultaneously, rather than selectively masking or bit-addressing only P1.0 (`P1^0`).
+> **Byte-Wide Port Register Manipulation:** In `main.c`, the statements `P1 = 0x00;` and `P1 = 0xFF;` assign values to the entire 8-bit Port 1 Special Function Register (SFR address `0x90`). This simultaneously drives all eight pins (P1.0 through P1.7), rather than masking or bit-addressing P1.0 alone (`sbit`).
 
-#### Hardware Bring-Up Sheet (Question Paper Deliverables)
+#### 3. Hardware Bring-Up Sheet (Question Paper Deliverables)
 
-| Parameter | Specification / Student Entry Status |
+| Parameter | Laboratory Entry / Status |
 | :--- | :--- |
-| **MCU** | AT89S52 |
+| **MCU** | Microchip / Atmel AT89S52 |
 | **CPU Core** | 8-bit 8051 (MCS-51 Architecture) |
-| **Operating Voltage** | Not confirmed (Standard AT89S52 nominal VCC is 5.0 V; board power rails unverified with DMM) |
-| **Debug Interface** | Not confirmed (AT89S52 supports In-System Programming [ISP]; no on-chip JTAG debug interface) |
+| **Development Board** | AmBTech Labs 8051 Development Board (PCB marking confirmed) |
+| **Operating Voltage** | Nominal 5.0 V (Board power rails unverified with DMM) |
+| **Clock Frequency** | 11.0592 MHz crystal oscillator |
+| **Debug / Program Interface** | In-System Programming (ISP) via ProgISP v1.72 (Physical programmer model unconfirmed) |
 | **LED GPIO Port** | Port 1 (`P1`, SFR Address `0x90`) |
-| **LED GPIO Pin** | P1.0 reported by student (firmware drives entire Port 1: P1.0–P1.7) |
-| **LED Active State** | Active-Low (`0` = LED ON, `1` = LED OFF) |
-| **LED Frequency (Hz)** | Intended ~1 Hz (nominal 500 ms ON / 500 ms OFF; physical output unverified) |
+| **LED GPIO Pin** | Pin 1 (`P1.0`) |
+| **LED Indicators Present** | Dual indicators: (1) Onboard LED associated with P1.0, (2) External LED on breadboard |
+| **External LED Electrical State** | Active-High to Ground (`P1.0 → R_LED → Anode → Cathode → GND`) |
+| **Onboard LED Electrical State** | Associated with P1.0 (Internal PCB routing / polarity unverified) |
+| **Observed Physical State** | Both LEDs observed blinking simultaneously in lab |
+| **LED Blink Frequency (Hz)** | Intended ~1 Hz (Nominal ~500 ms ON / ~500 ms OFF; actual output unmeasured) |
 
 ---
 
 ### TASK NO
 TASK2B
 
-#### Task Description (According to CAT2 Question Paper)
-As specified in the official Continuous Lab Evaluation-2 question paper:
-- **Core Activity**: Compile a minimal bare-metal Embedded C program, program the AT89S52 microcontroller, and control an LED by directly accessing the microcontroller's memory-mapped GPIO registers.
-- **Mandatory Constraint**: Strictly NO to using Arduino APIs, HAL libraries, or RTOS services.
-- **Required Steps**:
+#### Task Objectives and Requirements (According to CAT2 Question Paper)
+As mandated in the official continuous evaluation prompt:
+- **Core Activity**: Compile a minimal bare-metal Embedded C program, flash the AT89S52 microcontroller, and control an LED by directly accessing the microcontroller's memory-mapped GPIO registers.
+- **Mandatory Constraint**: Strictly NO to using Arduino APIs, HAL libraries, or RTOS services!
+- **Evaluation Requirements**:
   1. **Hardware Board Bring-Up**:
-     - Identify the microcontroller, programmer interface, power source, user LED, and relevant GPIO pin.
-     - Verify the development board power rails using a digital multimeter.
-     - Identify the LED GPIO port and pin from the schematic/datasheet.
-     - Establish communication between the host computer and target MCU.
+     - Identify microcontroller, programming interface, power source, user LED, and relevant GPIO pin.
+     - Verify board power rails using a digital multimeter.
+     - Identify LED GPIO port and pin from the datasheet and schematic.
+     - Establish communication between the host PC and target MCU via the programming toolchain.
   2. **Bare-Metal LED Blink**:
      - Configure the LED GPIO as an output using direct register access.
      - Implement a delay mechanism using a simple software loop.
      - Blink the LED at approximately 1 Hz (50% duty cycle).
-  3. **Custom Library Function**: Develop a custom function for delay functionality (`delay(unsigned int msec)`).
+  3. **Custom Library Function**: Develop a custom library/function for software delay functionality (`delay(unsigned int msec)`).
 
 ---
 
 ### Circuit Diagram
 
-*Circuit diagram placeholder. Hardware schematic and breadboard/development board wiring diagram to be confirmed and added.*
-
 ![Circuit Diagram](circuit.png)
+
+#### Dual LED Implementation and Connection Certainty
+1. **Onboard User LED (AmBTech Labs 8051 Board)**:
+   - **Certainty**: Physically confirmed present on the development board and associated with pin P1.0.
+   - **Observed Behavior**: Both the onboard LED and external LED were observed blinking simultaneously during program execution.
+   - **Circuit Details**: The internal PCB routing (active-low current sinking vs. buffered active-high) is not verified from a published manufacturer schematic. It is represented in the diagram as an onboard indicator associated with P1.0 to avoid fabricating unverified trace layouts.
+2. **External Breadboard LED (Student Reported Wiring)**:
+   - **Certainty**: Reported by the student from laboratory wiring, not independently verified from an instructor schematic.
+   - **Connection**: `P1.0 (Pin 1) → Current-limiting resistor R_LED → LED Anode (+) → LED Cathode (-) → GND`.
+   - **Polarity**: Because the LED cathode connects to GND, writing logic HIGH (~5 V) to P1.0 forward-biases the diode and turns the LED **ON**, while writing logic LOW (0 V) turns the LED **OFF**. This constitutes **active-high** operation.
+   - **Resistor Value**: Labelled `R_LED (value unverified)` because the exact resistor value used during the laboratory session was not confirmed (do not assume 330 Ω).
 
 ---
 
 ### Core Logic / Pseudocode / Code Base
 
 #### 1. Main Objective
-Implement a bare-metal 8051 control routine in C to blink an LED connected to Port 1 by directly writing to the memory-mapped Special Function Register (SFR) `P1` without HAL abstractions, operating system services, or external drivers.
+Control GPIO output switching on Port 1 of the AT89S52 microcontroller using bare-metal Embedded C, toggling digital output levels with a software timing loop to achieve continuous LED blinking.
 
-#### 2. GPIO Operation
-In the 8051 architecture, I/O ports are memory-mapped registers located in the Special Function Register (SFR) space. Port 1 is mapped to byte address `0x90`, accessible via the `#include <reg51.h>` header.
-- Writing `0x00` sets all pins of Port 1 (P1.0–P1.7) to logic LOW (0 V).
-- Writing `0xFF` sets all pins of Port 1 (P1.0–P1.7) to logic HIGH (~5 V).
-Because the existing firmware writes byte-wide to `P1`, all 8 pins transition together.
+#### 2. Working Principle and Internal Pull-Ups
+- **Memory-Mapped Registers**: In 8051 architecture, I/O ports are memory-mapped Special Function Registers. Port 1 is mapped to byte address `0x90`, accessible directly through `#include <reg51.h>`.
+- **Port 1 Architecture**: Port 1 pins are quasi-bidirectional with internal pull-up resistors.
+  - Writing `P1 = 0x00` activates the internal pull-down FETs, pulling the pins to ground (0 V) and sinking current.
+  - Writing `P1 = 0xFF` turns off the internal pull-down FETs, allowing the internal pull-up resistors to pull the pins HIGH (~5 V), sourcing current to connected loads.
 
-#### 3. Custom Software Delay
-The software delay is implemented using nested `for` loops in `delay(unsigned int msec)`:
-- The outer loop iterates `msec` times.
-- The inner loop executes 127 empty iterations (`for (j = 0; j < 127; j++)`), intended to consume CPU machine cycles to produce roughly a 1-millisecond delay at a 12 MHz clock frequency.
+#### 3. GPIO Register Operation
+The firmware executes `P1 = 0x00;` followed by `P1 = 0xFF;`. This writes byte-wide across all eight bits of Port 1 (P1.0 to P1.7), causing all Port 1 pins to toggle simultaneously.
 
-#### 4. Main Algorithm
-1. Enter an infinite superloop (`while(1)`).
-2. Drive Port 1 LOW (`P1 = 0x00`), sinking current and turning the active-low LED ON.
-3. Call `delay(500)` to hold the ON state for roughly 500 ms.
-4. Drive Port 1 HIGH (`P1 = 0xFF`), cutting current flow and turning the active-low LED OFF.
-5. Call `delay(500)` to hold the OFF state for roughly 500 ms.
-6. Repeat indefinitely, producing an intended period of 1000 ms (~1 Hz blink rate).
+#### 4. Custom Software Delay Function
+Software timing is achieved through nested `for` loops in `void delay(unsigned int msec)`:
+- Outer loop executes `msec` iterations.
+- Inner loop executes 127 empty iterations (`for (j = 0; j < 127; j++)`), intended to waste CPU machine cycles. At a 12 MHz clock, this approximates 1 millisecond per outer loop iteration.
 
-#### 5. Pseudocode
+#### 5. Approximate Blinking Period
+- The firmware requests `delay(500)` in each state:
+  $$\text{Period } T = t_{\text{LOW}} + t_{\text{HIGH}} \approx 500\text{ ms} + 500\text{ ms} = 1000\text{ ms} = 1.0\text{ s}$$
+  $$\text{Nominal Frequency } f = \frac{1}{T} \approx 1\text{ Hz}$$
+- **Timing Disclaimer**: This timing is an intended software approximation. Because the loop was calibrated for 12 MHz but runs on an 11.0592 MHz crystal, and because instruction cycles depend on compiler optimization levels, actual timing diverges from exactly 1.00 Hz.
+
+#### 6. Pseudocode
 ```text
 FUNCTION delay(msec):
     FOR i FROM 0 TO msec - 1 DO
@@ -109,15 +138,15 @@ ENDFUNCTION
 
 FUNCTION main():
     WHILE TRUE DO
-        P1 = 0x00        // Drive all Port 1 pins LOW -> Active-low LEDs ON
+        P1 = 0x00        // Drive all Port 1 output bits LOW
         CALL delay(500)  // Wait approximately 500 ms
-        P1 = 0xFF        // Drive all Port 1 pins HIGH -> Active-low LEDs OFF
+        P1 = 0xFF        // Drive all Port 1 output bits HIGH
         CALL delay(500)  // Wait approximately 500 ms
     ENDWHILE
 ENDFUNCTION
 ```
 
-#### 6. Code Implementation (`main.c`)
+#### 7. Authoritative C Source Code (`main.c`)
 ```c
 #include <reg51.h>
 
@@ -145,30 +174,21 @@ void main()
 }
 ```
 
-#### 7. Active-Low LED Operation
-- **Circuit Behavior**: In an active-low LED circuit, the LED anode is tied to the positive supply rail (VCC, 5 V) through a current-limiting resistor, while the cathode connects to the microcontroller GPIO pin.
-- **Logic LOW (`P1 = 0x00`)**: When the pin outputs 0 V, a potential difference exists across the LED, allowing current to flow from VCC into the pin (current sinking). This forward-biases the diode, turning the LED **ON**.
-- **Logic HIGH (`P1 = 0xFF`)**: When the pin outputs logic 1 (~5 V), both terminals of the LED circuit are at approximately equal potential. No forward current can flow, turning the LED **OFF**.
-
 ---
 
 ### INFERENCE
 
-1. **Direct GPIO Register Access**:
-   The experiment illustrates fundamental bare-metal embedded programming on the 8051 (MCS-51) architecture. Writing directly to the memory-mapped Special Function Register `P1` (SFR `0x90`) provides immediate, low-overhead hardware control without the latency or memory footprint of HAL libraries, Arduino abstractions, or RTOS drivers.
+1. **Verified Laboratory Observation**:
+   > The onboard LED associated with P1.0 and the externally connected LED were both observed blinking during the experiment.
 
-2. **Bare-Metal Embedded C Workflow**:
-   The program executes directly from the reset vector (`0x0000`) configured by `STARTUP.A51` into `main()`, highlighting the minimal runtime required by 8-bit microcontrollers in IoT edge nodes.
+2. **Bare-Metal Register Access**:
+   The experiment successfully demonstrates low-level bare-metal GPIO control. Directly writing to Special Function Register `P1` (SFR `0x90`) eliminates the runtime overhead, latency, and abstractions of Arduino APIs, HAL libraries, or RTOS kernels.
 
-3. **Alternating Output State Control**:
-   By toggling Port 1 between `0x00` and `0xFF`, the microcontroller switches between current-sinking and high-state conditions, achieving continuous LED blinking through alternating output states.
+3. **Bare-Metal Embedded Execution Flow**:
+   Reset initialization executes directly from address `0x0000` via `STARTUP.A51`, clearing memory and branching into `main()` without an underlying operating system.
 
-4. **Nominal 1 Hz Blinking**:
-   The firmware establishes an intended 500 ms ON time and 500 ms OFF time, targeting a total period of 1000 ms (1 Hz frequency, 50% duty cycle).
+4. **Intended Software Timing vs. Measured Values**:
+   The ~1-second blinking cycle (500 ms per state) represents an intended software timing calculation. Actual output voltage levels, supply rail stability, and physical frequency were **not measured** with an oscilloscope, digital multimeter, or logic analyzer.
 
 5. **Software Delay Limitations**:
-   Software delay loops execute blocking CPU cycles, preventing the processor from performing other computations or entering low-power sleep modes. Furthermore, software loop timing is sensitive to clock frequency discrepancies (e.g., 11.0592 MHz actual crystal vs. 12 MHz assumed in the loop calculation, causing an approximate ~8% timing deviation) and Keil C51 compiler optimization levels. For deterministic timing in production IoT systems, hardware timer peripherals (Timer 0 / Timer 1) should be utilized.
-
-6. **Hardware Verification Status**:
-   - **Intended Behavior**: Verified through static code analysis, logic inspection, and Keil project compilation to Intel HEX format (`Objects/led_test.hex`).
-   - **Physical Hardware Observations**: The actual physical blink frequency, multi-meter voltage rail measurements, and physical development board bring-up have **not yet been confirmed** on live laboratory hardware.
+   Software delay loops execute blocking CPU instructions, preventing low-power sleep modes and background task handling. Because the loop relies on CPU clock cycles, timing is sensitive to clock frequency discrepancies (11.0592 MHz physical crystal vs. 12 MHz calculation) and Keil compiler optimization levels. For deterministic timing in embedded IoT edge devices, hardware timer peripherals (Timer 0 / Timer 1) with interrupt service routines are required.
