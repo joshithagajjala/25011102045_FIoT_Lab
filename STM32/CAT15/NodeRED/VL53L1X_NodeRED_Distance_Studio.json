@@ -1,0 +1,176 @@
+[
+  {
+    "id": "tof_flow_v1",
+    "type": "tab",
+    "label": "VL53L1X • Live Distance Studio",
+    "disabled": false,
+    "info": "MQTT VL53L1X realtime telemetry dashboard"
+  },
+  {
+    "id": "tof_broker_v1",
+    "type": "mqtt-broker",
+    "name": "EMQX Public",
+    "broker": "broker.emqx.io",
+    "port": "1883",
+    "clientid": "",
+    "autoConnect": true,
+    "usetls": false,
+    "protocolVersion": "4",
+    "keepalive": "60",
+    "cleansession": true,
+    "autoUnsubscribe": true,
+    "birthTopic": "",
+    "birthQos": "0",
+    "birthPayload": "",
+    "birthMsg": {},
+    "closeTopic": "",
+    "closeQos": "0",
+    "closePayload": "",
+    "closeMsg": {},
+    "willTopic": "",
+    "willQos": "0",
+    "willPayload": "",
+    "willMsg": {}
+  },
+  {
+    "id": "tof_mqtt_v1",
+    "type": "mqtt in",
+    "z": "tof_flow_v1",
+    "name": "VL53L1X Live MQTT",
+    "topic": "stm32/tof/data",
+    "qos": "0",
+    "datatype": "auto-detect",
+    "broker": "tof_broker_v1",
+    "nl": false,
+    "rap": true,
+    "rh": 0,
+    "inputs": 0,
+    "x": 150,
+    "y": 140,
+    "wires": [
+      [
+        "tof_normalize_v1"
+      ]
+    ]
+  },
+  {
+    "id": "tof_normalize_v1",
+    "type": "function",
+    "z": "tof_flow_v1",
+    "name": "Validate distance + zone",
+    "func": "let p = msg.payload;\nif (typeof p === 'string') { try { p = JSON.parse(p); } catch(e) { node.warn('Invalid JSON'); return null; } }\nif (!p || !Number.isFinite(Number(p.distance))) return null;\nmsg.payload = {distance:Number(p.distance), raw:Number(p.raw ?? p.distance), zone:String(p.zone || 'UNKNOWN'), suggestion:String(p.suggestion || '')};\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 390,
+    "y": 140,
+    "wires": [
+      [
+        "tof_ui_v1",
+        "tof_debug_v1"
+      ]
+    ]
+  },
+  {
+    "id": "tof_debug_v1",
+    "type": "debug",
+    "z": "tof_flow_v1",
+    "name": "Decoded VL53L1X",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 670,
+    "y": 200,
+    "wires": []
+  },
+  {
+    "id": "tof_ui_v1",
+    "type": "ui-template",
+    "z": "tof_flow_v1",
+    "group": "tof_group_v1",
+    "page": "",
+    "ui": "",
+    "name": "Live Distance Studio (custom)",
+    "order": 1,
+    "width": 0,
+    "height": 0,
+    "head": "",
+    "format": "<template>\n<div class=\"tof-app\">\n  <header class=\"tof-head\"><div><div class=\"tof-eyebrow\">●  LIVE TELEMETRY / STM32 + VL53L1X</div><h1>Distance <span>Studio.</span></h1><p>Real-time obstacle monitoring · ESP8266 MQTT bridge</p></div><div class=\"tof-live\" :class=\"{off: !online}\"><span class=\"tof-dot\"></span>{{ online ? 'LIVE STREAM' : 'AWAITING DATA' }}</div></header>\n  <section class=\"tof-grid\">\n    <article class=\"tof-panel tof-main\"><div class=\"tof-label\">CURRENT DISTANCE <span>↗</span></div><div class=\"tof-number\">{{ hasData ? Math.round(distance) : '—' }}<span>mm</span></div><div class=\"tof-small\">Raw reading: <b>{{ hasData ? Math.round(raw)+' mm' : '—' }}</b> &nbsp;·&nbsp; 5-sample smoothing</div><div class=\"tof-meter\"><div class=\"tof-meterfill\" :style=\"{width: Math.min(100,Math.max(0,distance/2000*100))+'%'}\"></div></div><div class=\"tof-scale\"><span>0 mm</span><span>1000</span><span>2000+ mm</span></div></article>\n    <article class=\"tof-panel tof-zone\" :class=\"zoneClass\"><div class=\"tof-label\">OBSTACLE STATUS <span>◎</span></div><div class=\"tof-status\">{{ hasData ? displayZone : 'NO READING' }}</div><div class=\"tof-desc\">{{ hasData ? suggestion : 'Waiting for the first valid sensor message' }}</div><div class=\"tof-pill\">{{ hasData ? (zone === 'STOP' ? '● CRITICAL' : zone === 'TURN_LEFT' ? '● CAUTION' : zone === 'SLOW' ? '● MONITOR' : '● CLEAR PATH') : '● STANDBY' }}</div></article>\n  </section>\n  <section class=\"tof-panel tof-chart\"><div class=\"tof-charthead\"><div><div class=\"tof-label\">DISTANCE HISTORY</div><h2>Live ranging trend</h2></div><div class=\"tof-chartnote\">Last {{ history.length }} samples · every ~500 ms</div></div><svg viewBox=\"0 0 840 208\" preserveAspectRatio=\"none\" class=\"tof-svg\" role=\"img\" aria-label=\"Distance history chart\"><line v-for=\"y in [28,78,128,178]\" :key=\"y\" x1=\"30\" :y1=\"y\" x2=\"824\" :y2=\"y\" stroke=\"#313444\" stroke-dasharray=\"5 7\"/><polyline v-if=\"history.length > 1\" :points=\"chartPoints\" fill=\"none\" stroke=\"#fc7767\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-linejoin=\"round\" vector-effect=\"non-scaling-stroke\"/><circle v-if=\"history.length > 0\" :cx=\"lastPoint.x\" :cy=\"lastPoint.y\" r=\"5\" fill=\"#fc7767\" stroke=\"#1a1b27\" stroke-width=\"3\"/><text x=\"0\" y=\"28\" fill=\"#9293a7\" font-size=\"13\">2m</text><text x=\"0\" y=\"105\" fill=\"#9293a7\" font-size=\"13\">1m</text><text x=\"0\" y=\"183\" fill=\"#9293a7\" font-size=\"13\">0</text></svg><div class=\"tof-chartbottom\"><span>Older readings</span><span>Latest reading</span></div></section>\n  <section class=\"tof-footer\"><div><span class=\"tof-footerlabel\">BROKER</span><b>broker.emqx.io:1883</b></div><div><span class=\"tof-footerlabel\">TOPIC</span><b>stm32/tof/data</b></div><div><span class=\"tof-footerlabel\">LAST UPDATE</span><b>{{ lastTime || '—' }}</b></div><div><span class=\"tof-footerlabel\">MESSAGES RECEIVED</span><b>{{ count }}</b></div></section>\n</div>\n</template>\n<script>\nexport default {\n  data() { return { distance:0, raw:0, zone:'', suggestion:'', hasData:false, count:0, lastTime:'', lastAt:0, now:Date.now(), history:[], timer:null } },\n  computed: {\n    online() {return this.hasData && this.now-this.lastAt<5000},\n    displayZone() {return (this.zone||'UNKNOWN').replaceAll('_',' ')},\n    zoneClass() {return 'state-'+(this.zone||'unknown').toLowerCase()},\n    chartPoints() {let a=this.history; return a.map((v,i)=>`${30+i*794/Math.max(1,a.length-1)},${178-Math.min(2000,Math.max(0,v))*150/2000}`).join(' ')},\n    lastPoint() {let a=this.history;return {x:a.length>1?824:30,y:178-Math.min(2000,Math.max(0,a[a.length-1]||0))*150/2000}}\n  },\n  watch: { msg: { handler(m) {if (!m||!m.payload) return; let p=m.payload; if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){return}} if(!Number.isFinite(Number(p.distance)))return; this.distance=Number(p.distance);this.raw=Number(p.raw??p.distance);this.zone=String(p.zone||'UNKNOWN');this.suggestion=String(p.suggestion||'');this.hasData=true;this.count++;this.lastAt=Date.now();this.now=this.lastAt;this.lastTime=new Date().toLocaleTimeString();this.history.push(this.distance);if(this.history.length>60)this.history.shift() }, immediate:true } },\n  mounted(){this.timer=setInterval(()=>{this.now=Date.now()},1000)},\n  unmounted(){clearInterval(this.timer)}\n}\n</script>\n<style>\n.tof-app{font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#f8f5f4;background:#13151f;border-radius:18px;padding:clamp(16px,3vw,32px);min-height:620px}.tof-app *{box-sizing:border-box}.tof-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:28px;flex-wrap:wrap}.tof-eyebrow,.tof-label,.tof-footerlabel{font-size:11px;font-weight:750;letter-spacing:1.7px;color:#a4a5b7}.tof-eyebrow{color:#fc9e8e}.tof-head h1{font-size:clamp(31px,4vw,46px);margin:9px 0 3px;line-height:1.1;font-weight:850;letter-spacing:-1.8px}.tof-head h1 span{color:#fc7767}.tof-head p{margin:0;color:#989aaf;font-size:13px}.tof-live{padding:10px 13px;border-radius:50px;border:1px solid #3b6052;color:#82dfac;background:#1d302e;font-size:10px;font-weight:800;letter-spacing:1.2px;white-space:nowrap}.tof-live.off{color:#d9a4a4;background:#372628;border-color:#734548}.tof-dot{display:inline-block;width:8px;height:8px;background:currentColor;border-radius:50%;margin-right:8px}.tof-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}.tof-panel{background:#202330;border:1px solid #343646;border-radius:16px;padding:24px;min-width:0}.tof-label{display:flex;justify-content:space-between}.tof-label span{font-size:18px;color:#fc7767}.tof-number{font-weight:850;font-size:clamp(66px,9vw,105px);letter-spacing:-5px;line-height:1.2;margin:12px 0}.tof-number span{font-size:20px;letter-spacing:0;color:#9c9fb4;margin-left:10px}.tof-small{font-size:12px;color:#a8aabc}.tof-small b{color:#fff}.tof-meter{margin-top:26px;height:9px;border-radius:20px;background:#3a3b4e;overflow:hidden}.tof-meterfill{background:linear-gradient(90deg,#fc7767,#ffd1a4);height:100%;border-radius:20px;transition:width .3s}.tof-scale,.tof-chartbottom{display:flex;justify-content:space-between;color:#85879b;font-size:10px;margin-top:9px}.tof-zone{display:flex;flex-direction:column;justify-content:space-between;min-height:285px}.tof-status{font-size:clamp(31px,4vw,52px);letter-spacing:-1.3px;font-weight:850;line-height:1.05;margin:22px 0 8px;color:#fc7767}.tof-desc{color:#bcbcca;font-size:15px;line-height:1.6;min-height:50px}.tof-pill{align-self:flex-start;background:#533036;color:#ff9b92;font-size:11px;padding:9px 13px;border-radius:30px;font-weight:800;letter-spacing:1px;margin-top:16px}.state-clear .tof-status{color:#7ddda9}.state-clear .tof-pill{background:#224436;color:#7ddda9}.state-slow .tof-status{color:#f3c677}.state-slow .tof-pill{background:#4a3d25;color:#f3c677}.state-turn_left .tof-status{color:#ffae80}.state-turn_left .tof-pill{background:#4b362a;color:#ffae80}.tof-chart{margin-top:14px}.tof-charthead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.tof-charthead h2{font-size:23px;letter-spacing:-.6px;margin:6px 0 12px}.tof-chartnote{font-size:11px;color:#9092a6}.tof-svg{display:block;width:100%;height:190px;overflow:visible;margin-top:8px}.tof-footer{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}.tof-footer>div{border:1px solid #343646;border-radius:13px;padding:14px 16px;background:#202330;min-width:0}.tof-footerlabel{display:block;font-size:9px;margin-bottom:8px}.tof-footer b{font-size:12px;overflow-wrap:anywhere}.tof-app .tof-chart svg{text-align:left}@media(max-width:720px){.tof-grid{grid-template-columns:1fr}.tof-footer{grid-template-columns:repeat(2,1fr)}.tof-panel{padding:17px}.tof-zone{min-height:220px}}\n</style>",
+    "storeOutMessages": true,
+    "passthru": false,
+    "resendOnRefresh": true,
+    "templateScope": "local",
+    "className": "",
+    "x": 670,
+    "y": 120,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "tof_group_v1",
+    "type": "ui-group",
+    "name": "Telemetry",
+    "page": "tof_page_v1",
+    "width": "12",
+    "height": "1",
+    "order": 1,
+    "showTitle": false,
+    "className": "",
+    "visible": "true",
+    "disabled": "false"
+  },
+  {
+    "id": "tof_page_v1",
+    "type": "ui-page",
+    "name": "Distance Studio",
+    "ui": "tof_base_v1",
+    "path": "/distance-studio",
+    "icon": "radar",
+    "layout": "grid",
+    "theme": "tof_theme_v1",
+    "order": 1,
+    "className": "",
+    "visible": "true",
+    "disabled": "false"
+  },
+  {
+    "id": "tof_base_v1",
+    "type": "ui-base",
+    "name": "VL53L1X Dashboard",
+    "path": "/dashboard",
+    "includeClientData": true,
+    "acceptsClientConfig": [
+      "ui-notification",
+      "ui-control"
+    ],
+    "showPathInSidebar": false,
+    "navigationStyle": "default"
+  },
+  {
+    "id": "tof_theme_v1",
+    "type": "ui-theme",
+    "name": "Charcoal + Coral",
+    "colors": {
+      "surface": "#191b25",
+      "primary": "#fc7767",
+      "bgPage": "#13151f",
+      "groupBg": "#13151f",
+      "groupOutline": "#13151f"
+    },
+    "sizes": {
+      "pagePadding": "14px",
+      "groupGap": "12px",
+      "groupBorderRadius": "16px",
+      "widgetGap": "10px"
+    }
+  }
+]
