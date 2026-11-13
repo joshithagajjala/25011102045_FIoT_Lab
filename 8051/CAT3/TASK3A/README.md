@@ -69,6 +69,6 @@ void delay_check(unsigned int ms, unsigned char *mode) {
 ```
 
 ### INFERENCE
-1. The pushbutton on P3.2 reliably switches among all four LED modes using software polling and 20 ms debouncing without hardware interrupts.
+1. The pushbutton on P3.2 switches between four LED operating modes using software polling and 20 ms debouncing without hardware interrupts.
 2. Active-low Port 1 register manipulation produces running, counter, alternating, and flashing visual sequences.
 3. Polling inside `delay_check()` maintains responsiveness during pattern execution while preserving software timing.
