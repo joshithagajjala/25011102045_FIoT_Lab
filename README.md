@@ -24,7 +24,8 @@ Foundations_of_IoT/
     ├── CAT11/  # HTTP Web Server via Wemos AT Commands (Eval-10C)
     ├── CAT12/  # Nucleo STM32F401RE GPIO & Bring-Up
     ├── CAT13/  # BME280 Sensor Interfacing via I²C (Eval-12)
-    └── CAT14/  # BME280 & ESP8266 MQTT Telemetry (Eval-13)
+    ├── CAT14/  # BME280 & ESP8266 MQTT Telemetry (Eval-13)
+    └── CAT15/   # ToF Sensor, ESP8266 MQTT & Node-RED Dashboard
 ```
 
 ---
@@ -57,5 +58,6 @@ All STM32 projects are configured via STM32CubeMX and built with ARM Keil MDK (u
 | **CAT12** | GPIO & User Input Programming | STM32F401RE (Nucleo) | Hardware clock bring-up, user push-button, and onboard LED control. |
 | **CAT13** | BME280 Sensor Interfacing via I²C | STM32F401RE (Nucleo) | Bosch BME280 sensor driver with compensated temperature, pressure & humidity reading. |
 | **CAT14** | BME280 & ESP8266 MQTT Telemetry | STM32F401RE + ESP8266 | Custom ESP8266 AT API publishing BME280 telemetry over MQTT. |
+| **CAT15** | ToF Distance Sensing & MQTT Dashboard | STM32F401RE (Nucleo) + ToF Sensor + Wemos D1 Mini (ESP8266) | ToF distance measurement, UART communication between STM32 and ESP8266, MQTT telemetry, and real-time Node-RED dashboard visualization. |
 
 
