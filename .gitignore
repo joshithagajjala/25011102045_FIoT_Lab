@@ -1,0 +1,54 @@
+﻿# Keil µVision / ARM / 8051 Output Files
+*.obj
+*.OBJ
+*.o
+*.d
+*.crf
+*.dep
+*.lnp
+*.m51
+*.M51
+*.map
+*.MAP
+*.lst
+*.LST
+*.build_log.htm
+*.htm
+
+# User-specific Keil Settings
+*.uvguix.*
+*.uvgui.*
+*.uvopt.bak
+*.uvproj.bak
+*.uvoptx.bak
+*.uvprojx.bak
+
+# Keep Compiled Binaries, Configurations & Startups
+!*.hex
+!*.HEX
+!*.bin
+!*.uvproj
+!*.uvprojx
+!*.uvopt
+!*.uvoptx
+!*.ioc
+!*.mxproject
+!.mxproject
+!*.s
+!STARTUP.A51
+!.gitkeep
+!README.md
+!Objects/
+!Objects/*.hex
+!MDK-ARM/
+!MDK-ARM/*.uvprojx
+!MDK-ARM/*.uvoptx
+!MDK-ARM/*.s
+!MDK-ARM/*.hex
+!MDK-ARM/*/*.hex
+
+# Operating System / IDE artifacts
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
