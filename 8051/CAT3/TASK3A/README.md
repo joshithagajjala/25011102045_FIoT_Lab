@@ -18,7 +18,7 @@ Timer-Based LED Pattern Generator and Button Interrupt Controller
 TASK3A — Four LED operating modes controlled by one pushbutton using software polling and debouncing.
 
 ### Circuit Diagram
-![Circuit Diagram](../circuit.png)
+![Circuit Diagram](circuit.png)
 
 Four external active-low LEDs connect to P1.0–P1.3, and the pushbutton on P3.2 switches to GND with active-low press detection.
 
