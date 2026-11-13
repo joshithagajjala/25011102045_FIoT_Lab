@@ -1,54 +1,40 @@
-﻿# Keil µVision / ARM / 8051 Output Files
-*.obj
-*.OBJ
-*.o
-*.d
-*.crf
-*.dep
-*.lnp
-*.m51
-*.M51
-*.map
-*.MAP
-*.lst
-*.LST
-*.build_log.htm
-*.htm
 
-# User-specific Keil Settings
-*.uvguix.*
-*.uvgui.*
-*.uvopt.bak
-*.uvproj.bak
-*.uvoptx.bak
-*.uvprojx.bak
+# Keil generated listing files
+**/Listings/
 
-# Keep Compiled Binaries, Configurations & Startups
-!*.hex
-!*.HEX
-!*.bin
-!*.uvproj
-!*.uvprojx
-!*.uvopt
-!*.uvoptx
-!*.ioc
-!*.mxproject
-!.mxproject
-!*.s
-!STARTUP.A51
-!.gitkeep
-!README.md
-!Objects/
-!Objects/*.hex
-!MDK-ARM/
-!MDK-ARM/*.uvprojx
-!MDK-ARM/*.uvoptx
-!MDK-ARM/*.s
-!MDK-ARM/*.hex
-!MDK-ARM/*/*.hex
+# Keil generated object and build files
+**/Objects/*.obj
+**/Objects/*.lst
+**/Objects/*.m51
+**/Objects/*.abs
+**/Objects/*.omf
+**/Objects/*.lnp
+**/Objects/*.build_log.htm
+**/Objects/*.crf
+**/Objects/*.dep
 
-# Operating System / IDE artifacts
-.DS_Store
+# User-specific Keil settings
+**/*.uvgui
+**/*.uvgui.*
+**/*.uvguix*
+**/*.uvopt
+**/*.uvoptx
+
+# Generated intermediate build files
+**/*.axf
+**/*.o
+**/*.d
+**/*.dep
+**/*.map
+**/*.elf
+
+# Generated build directories
+**/Debug/
+**/Release/
+
+# Operating system files
 Thumbs.db
-.vscode/
-.idea/
+Desktop.ini
+.DS_Store
+
+# Keep .hex firmware files tracked
